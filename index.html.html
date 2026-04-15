@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>분석 조건 DB</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; background: #f5f5f5; color: #1a1a1a; }
+
+  header { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { font-size: 17px; font-weight: 700; color: #1a1a1a; white-space: nowrap; letter-spacing: -0.3px; }
+  .header-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+
+  .search-wrap { position: relative; }
+  .search-wrap input { padding: 7px 12px 7px 32px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; width: 230px; outline: none; transition: border 0.15s; }
+  .search-wrap input:focus { border-color: #5c6bc0; }
+  .search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: 13px; pointer-events: none; }
+
+  select { padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; background: #fff; outline: none; cursor: pointer; }
+  select:focus { border-color: #5c6bc0; }
+
+  .btn { padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; white-space: nowrap; transition: background 0.15s; }
+  .btn-primary { background: #5c6bc0; color: #fff; }
+  .btn-primary:hover { background: #4a5ab0; }
+  .btn-ai { background: linear-gradient(135deg, #7c4dff, #5c6bc0); color: #fff; display: flex; align-items: center; gap: 6px; }
+  .btn-ai:hover { background: linear-gradient(135deg, #6a3de8, #4a5ab0); opacity: 0.92; }
+  .ai-spark { font-size: 14px; }
+
+  .stats { padding: 8px 24px; background: #fff; border-bottom: 1px solid #e0e0e0; font-size: 12px; color: #888; }
+
+  /* No-result banner with AI button */
+  .no-result-banner { margin: 24px; background: #fff; border: 1.5px dashed #c5cae9; border-radius: 10px; padding: 32px; text-align: center; }
+  .no-result-banner .nr-title { font-size: 15px; font-weight: 600; color: #3d3d3d; margin-bottom: 6px; }
+  .no-result-banner .nr-sub { font-size: 13px; color: #888; margin-bottom: 20px; }
+
+  .table-wrap { overflow-x: auto; padding: 16px 24px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.07); min-width: 900px; }
+  thead { background: #f0f1f7; }
+  thead th { padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; color: #555; border-bottom: 1px solid #e0e0e0; white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid #f0f0f0; transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #f7f8ff; }
+  tbody td { padding: 10px 12px; font-size: 13px; vertical-align: top; color: #1a1a1a; }
+  tbody td.muted { color: #888; font-size: 12px; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge-gcms { background: #e3f2fd; color: #1565c0; }
+  .badge-hsgcms { background: #e8f5e9; color: #2e7d32; }
+  .badge-gcfid { background: #fff3e0; color: #e65100; }
+  .badge-hplc { background: #f3e5f5; color: #6a1b9a; }
+  .badge-hplcpda { background: #ede7f6; color: #4527a0; }
+  .badge-lcms { background: #fce4ec; color: #880e4f; }
+
+  .multi-line { white-space: pre-line; font-size: 11px; line-height: 1.5; color: #555; }
+  .btn-sm { padding: 3px 9px; border-radius: 4px; font-size: 11px; cursor: pointer; background: #fff; transition: background 0.1s; }
+  .btn-sm-gray { border: 1px solid #ddd; color: #555; }
+  .btn-sm-gray:hover { background: #f0f1f7; }
+  .btn-sm-red { border: 1px solid #ffcdd2; color: #c62828; }
+  .btn-sm-red:hover { background: #ffebee; }
+
+  /* Modal base */
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.38); z-index: 100; align-items: center; justify-content: center; }
+  .modal-bg.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; width: 620px; max-width: 96vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.18); }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid #e8e8e8; display: flex; justify-content: space-between; align-items: center; }
+  .modal-header h2 { font-size: 16px; font-weight: 700; }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #aaa; line-height: 1; }
+  .modal-body { padding: 20px; }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid #e8e8e8; display: flex; justify-content: flex-end; gap: 8px; }
+
+  .form-row { margin-bottom: 14px; }
+  .form-row label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+  .form-row input, .form-row select, .form-row textarea { width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; font-family: inherit; outline: none; }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: #5c6bc0; }
+  .form-row textarea { resize: vertical; min-height: 60px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-section { font-size: 11px; font-weight: 700; color: #7c4dff; margin: 16px 0 10px; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid #ede7f6; padding-bottom: 4px; }
+
+  .btn-save { padding: 8px 18px; background: #5c6bc0; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .btn-save:hover { background: #4a5ab0; }
+  .btn-cancel { padding: 8px 18px; background: #fff; color: #555; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  .btn-cancel:hover { background: #f5f5f5; }
+
+  /* Detail modal */
+  .detail-section { margin-bottom: 16px; }
+  .detail-section h3 { font-size: 11px; font-weight: 700; color: #7c4dff; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #ede7f6; }
+  .detail-grid { display: grid; grid-template-columns: 150px 1fr; gap: 6px 12px; font-size: 13px; }
+  .detail-label { color: #888; font-size: 12px; }
+  .detail-val { color: #1a1a1a; white-space: pre-line; }
+
+  /* AI Modal */
+  .ai-modal { width: 680px; }
+  .ai-header-badge { display: flex; align-items: center; gap: 8px; }
+  .ai-badge { background: linear-gradient(135deg, #7c4dff, #5c6bc0); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; letter-spacing: 0.3px; }
+
+  .ai-input-area { background: #f8f7ff; border: 1px solid #ede7f6; border-radius: 8px; padding: 14px; margin-bottom: 16px; }
+  .ai-input-row { display: flex; gap: 8px; align-items: flex-end; }
+  .ai-input-row input { flex: 1; padding: 9px 12px; border: 1px solid #d1c4e9; border-radius: 6px; font-size: 13px; font-family: inherit; outline: none; }
+  .ai-input-row input:focus { border-color: #7c4dff; }
+  .ai-input-row textarea { flex: 1; padding: 9px 12px; border: 1px solid #d1c4e9; border-radius: 6px; font-size: 13px; font-family: inherit; outline: none; min-height: 70px; resize: none; }
+  .ai-input-row textarea:focus { border-color: #7c4dff; }
+  .btn-ask { padding: 9px 16px; background: linear-gradient(135deg, #7c4dff, #5c6bc0); color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .btn-ask:hover { opacity: 0.9; }
+  .btn-ask:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .ai-result { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 16px; min-height: 80px; font-size: 13px; line-height: 1.8; color: #2a2a2a; white-space: pre-wrap; }
+  .ai-result.loading { color: #999; font-style: italic; }
+  .ai-result.empty { color: #bbb; text-align: center; padding: 32px; font-style: italic; }
+
+  .ai-result-actions { margin-top: 12px; display: flex; gap: 8px; justify-content: flex-end; }
+  .btn-to-db { padding: 7px 14px; background: #5c6bc0; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; }
+  .btn-to-db:hover { background: #4a5ab0; }
+
+  .ai-chat-history { margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .chat-bubble { padding: 10px 14px; border-radius: 8px; font-size: 13px; line-height: 1.7; max-width: 100%; }
+  .chat-user { background: #ede7f6; color: #311b92; align-self: flex-end; border-bottom-right-radius: 2px; }
+  .chat-ai { background: #f5f5f5; color: #1a1a1a; border-bottom-left-radius: 2px; white-space: pre-wrap; }
+  .chat-ai strong { color: #5c6bc0; }
+
+  .typing-dots { display: inline-flex; gap: 4px; align-items: center; padding: 6px 0; }
+  .typing-dots span { width: 7px; height: 7px; background: #9e9e9e; border-radius: 50%; animation: blink 1.2s infinite; }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+  @media (max-width: 600px) {
+    header { padding: 12px 14px; }
+    .table-wrap { padding: 10px 8px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .ai-modal { width: 96vw; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>분석 조건 DB</h1>
+  <div class="header-right">
+    <div class="search-wrap">
+      <span class="search-icon">&#128269;</span>
+      <input type="text" id="searchInput" placeholder="물질명 또는 CAS No. 검색" oninput="renderTable()">
+    </div>
+    <select id="filterDevice" onchange="renderTable()">
+      <option value="">전체 기기</option>
+      <option value="GC-MS">GC-MS</option>
+      <option value="HS-GC-MS">HS-GC-MS</option>
+      <option value="GC-FID">GC-FID</option>
+      <option value="HPLC">HPLC</option>
+      <option value="HPLC-PDA">HPLC-PDA</option>
+      <option value="LC-MS">LC-MS</option>
+      <option value="LC/MS">LC/MS</option>
+    </select>
+    <button class="btn btn-ai" onclick="checkAndOpenAi('')">
+      <span class="ai-spark">✦</span> AI 조건 추천
+    </button>
+    <button class="btn btn-primary" onclick="openAddModal()">+ 새 물질 추가</button>
+  </div>
+</header>
+
+<div class="stats" id="statsBar"></div>
+<div id="mainContent"></div>
+
+<!-- ===== API Key Modal ===== -->
+<div class="modal-bg" id="apiKeyModal">
+  <div class="modal" style="width:440px">
+    <div class="modal-header">
+      <div class="ai-header-badge">
+        <h2>API 키 설정</h2>
+        <span class="ai-badge">✦ AI</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('apiKeyModal')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:#555;line-height:1.7;margin-bottom:16px;">
+        AI 분석 조건 추천 기능을 사용하려면 <strong>Anthropic API 키</strong>가 필요합니다.<br>
+        입력한 키는 이 브라우저에만 저장되며 외부로 전송되지 않습니다.
+      </p>
+      <div class="form-row">
+        <label>Anthropic API Key</label>
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-...">
+      </div>
+      <p style="font-size:11px;color:#aaa;margin-top:-8px;">
+        API 키는 <a href="https://console.anthropic.com" target="_blank" style="color:#7c4dff">console.anthropic.com</a> 에서 발급받을 수 있습니다.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('apiKeyModal')">취소</button>
+      <button class="btn-save" onclick="saveApiKey()">저장 후 시작</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AI Modal ===== -->
+<div class="modal-bg" id="aiModal">
+  <div class="modal ai-modal">
+    <div class="modal-header">
+      <div class="ai-header-badge">
+        <h2>AI 분석 조건 추천</h2>
+        <span class="ai-badge">✦ AI</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="document.getElementById('apiKeyModal').classList.add('open')" style="font-size:11px;color:#aaa;background:none;border:1px solid #eee;border-radius:4px;padding:3px 8px;cursor:pointer;">🔑 키 변경</button>
+        <button class="modal-close" onclick="closeModal('aiModal')">&#x2715;</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="ai-chat-history" id="chatHistory"></div>
+      <div class="ai-input-area">
+        <div style="font-size:12px;color:#7c4dff;font-weight:600;margin-bottom:8px;">새 물질 이름 또는 CAS No. 입력</div>
+        <div class="ai-input-row">
+          <textarea id="aiQuery" placeholder="예) Styrene oxide, 아크릴산, 96-33-3&#10;분석 목적이나 시료 형태도 함께 입력하면 더 정확한 추천을 받을 수 있어요." rows="3"></textarea>
+          <button class="btn-ask" id="askBtn" onclick="askAI()">추천받기</button>
+        </div>
+      </div>
+      <div id="aiResultArea" class="ai-result empty">물질명을 입력하고 추천받기를 눌러주세요.</div>
+      <div class="ai-result-actions" id="aiActions" style="display:none">
+        <button class="btn-to-db" onclick="openAddFromAI()">+ DB에 추가하기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Add/Edit Modal ===== -->
+<div class="modal-bg" id="addModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">새 물질 추가</h2>
+      <button class="modal-close" onclick="closeModal('addModal')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>물질명 (복수 입력 시 줄바꿈으로 구분)</label>
+        <textarea id="f_name" rows="2" placeholder="예) Ethylene oxide&#10;Propylene oxide"></textarea>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>CAS No. (복수 입력 시 줄바꿈)</label>
+          <textarea id="f_cas" rows="2" placeholder="예) 75-21-8&#10;75-56-9"></textarea>
+        </div>
+        <div class="form-row">
+          <label>분석 장비</label>
+          <select id="f_device">
+            <option>GC-MS</option>
+            <option>HS-GC-MS</option>
+            <option>GC-FID</option>
+            <option>HPLC</option>
+            <option>HPLC-PDA</option>
+            <option>LC-MS</option>
+            <option>LC/MS</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-section">컬럼 / 유량</div>
+      <div class="form-grid">
+        <div class="form-row"><label>Column</label><input id="f_col" placeholder="예) DB-5MS"></div>
+        <div class="form-row"><label>Column Flow (mL/min)</label><input id="f_flow" placeholder="예) 0.8 mL/min"></div>
+        <div class="form-row"><label>Split Ratio</label><input id="f_split" placeholder="예) 25"></div>
+      </div>
+      <div id="gc_fields">
+        <div class="form-section">오븐 온도 프로그램</div>
+        <div class="form-row">
+          <label>온도 프로그램 (줄바꿈으로 스텝 구분)</label>
+          <textarea id="f_oven" rows="3" placeholder="예) 초기: 40℃, 5min&#10;5℃/min → 60℃, 1min&#10;30℃/min → 120℃, 2min"></textarea>
+        </div>
+        <div class="form-section">MS 조건</div>
+        <div class="form-grid">
+          <div class="form-row"><label>Ion Mode</label><input id="f_ionmode" placeholder="예) EI"></div>
+          <div class="form-row"><label>Ion Source Temp.</label><input id="f_ionsrc" placeholder="예) 250 ℃"></div>
+          <div class="form-row"><label>Solvent Cut Time</label><input id="f_cuttime" placeholder="예) 2.2 min"></div>
+          <div class="form-row"><label>Start ~ End Time</label><input id="f_time" placeholder="예) 2.2 ~ 10 min"></div>
+          <div class="form-row"><label>ACQ Mode</label>
+            <select id="f_acq"><option>Scan</option><option>SIM</option></select>
+          </div>
+          <div class="form-row"><label>m/z 범위 또는 SIM m/z</label><input id="f_mz" placeholder="예) 35 ~ 150"></div>
+        </div>
+        <div id="hs_fields">
+          <div class="form-section">Headspace 조건</div>
+          <div class="form-grid">
+            <div class="form-row"><label>HS Oven Temp. (℃)</label><input id="f_hs_oven" placeholder="예) 80"></div>
+            <div class="form-row"><label>Sample Line Temp. (℃)</label><input id="f_hs_line" placeholder="예) 150"></div>
+            <div class="form-row"><label>Transfer Line Temp. (℃)</label><input id="f_hs_transfer" placeholder="예) 160"></div>
+          </div>
+        </div>
+      </div>
+      <div id="hplc_fields" style="display:none">
+        <div class="form-section">HPLC / LC-MS 조건</div>
+        <div class="form-grid">
+          <div class="form-row"><label>이동상 조성 / Gradient</label><input id="f_mobile" placeholder="예) A: DW / B: ACN"></div>
+          <div class="form-row"><label>측정 파장 (nm)</label><input id="f_wave" placeholder="예) 254 nm"></div>
+          <div class="form-row"><label>Oven Temp. (℃)</label><input id="f_oven_temp" placeholder="예) 40"></div>
+          <div class="form-row"><label>Injection Vol. (μL)</label><input id="f_inj_vol" placeholder="예) 10"></div>
+          <div class="form-row"><label>Flow Mode</label><input id="f_flow_mode" placeholder="예) Gradient / Isocratic"></div>
+          <div class="form-row"><label>이온화 방식 (LC-MS)</label><input id="f_ionization" placeholder="예) ESI, 2.5kV"></div>
+          <div class="form-row"><label>Ionization Polarity</label><input id="f_ion_polarity" placeholder="예) Positive / Negative"></div>
+          <div class="form-row"><label>m/z (LC-MS)</label><input id="f_mz_lcms" placeholder="예) 168"></div>
+          <div class="form-row"><label>Heat Block Temp. (℃)</label><input id="f_heat_block" placeholder="예) 250"></div>
+          <div class="form-row"><label>MRM 이온</label><input id="f_mrm" placeholder="예) 180→163"></div>
+        </div>
+      </div>
+      <div class="form-section">결과 / 샘플링</div>
+      <div class="form-grid">
+        <div class="form-row"><label>R.Time (min)</label><input id="f_rt" placeholder="예) 4.027"></div>
+        <div class="form-row"><label>Calibration (μg/mL)</label><input id="f_cal" placeholder="예) 5, 10, 20, 40"></div>
+      </div>
+      <div class="form-row">
+        <label>Sampling 방법</label>
+        <textarea id="f_sampling" rows="3" placeholder="시료 준비 및 전처리 방법 입력"></textarea>
+      </div>
+      <div class="form-row">
+        <label>비고</label>
+        <input id="f_note" placeholder="유도체화 여부, 특이사항 등">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('addModal')">취소</button>
+      <button class="btn-save" onclick="saveEntry()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Detail Modal ===== -->
+<div class="modal-bg" id="detailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="detailTitle">분석 조건 상세</h2>
+      <button class="modal-close" onclick="closeModal('detailModal')">&#x2715;</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('detailModal')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'gc_db_v3';
+
+const defaultData = [
+  {id:1, name:'Propylene oxide', cas:'75-56-9', device:'HS-GC-MS', col:'DB-5MS', flow:'0.68 mL/min', split:'50', oven:'초기: 40℃, 5min\n5℃/min → 60℃, 1min\n30℃/min → 120℃, 2min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'2.2 min', time:'2.2 ~ 10 min', acq:'Scan', mz:'35 ~ 150', hs_oven:'80', hs_line:'150', hs_transfer:'160', rt:'4.027', cal:'5, 10, 20, 40', sampling:'용액 제조(용매: ACN) → HS Bottle → 정제수 1mL 추가 → HS 열추출 장비', note:''},
+  {id:2, name:'Hexamethyldisiloxane\nOctamethylcyclotetrasiloxane\nAllyl alcohol', cas:'107-46-0\n556-67-0\n107-18-6', device:'GC-MS', col:'DB-5MS', flow:'0.8 mL/min', split:'25', oven:'초기: 50℃, 1min\n30℃/min → 80℃, 0min\n30℃/min → 200℃, 3min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'1.8 min', time:'1.8 ~ 9 min', acq:'Scan', mz:'35 ~ 300', hs_oven:'', hs_line:'', hs_transfer:'', rt:'Allyl alcohol: 1.963 (57 m/z)\nHexamethyldisiloxane: 2.365 (147 m/z)\nOctamethylcyclotetrasiloxane: 4.258 (218 m/z)', cal:'각 2.5, 5, 12.5, 25', sampling:'시료 약 1g, 25mL (용매 Methanol)', note:''},
+  {id:3, name:'Ethylene oxide\nPropylene oxide', cas:'75-21-8\n75-56-9', device:'GC-MS', col:'DB-5MS', flow:'0.8 mL/min', split:'25', oven:'초기: 35℃, 2min\n1℃/min → 40℃, 0min\n40℃/min → 200℃, 0.5min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'3.3 min', time:'3.3 ~ 11.5 min', acq:'SIM', mz:'58 m/z (Ch1)', hs_oven:'', hs_line:'', hs_transfer:'', rt:'EO: 2.920 / PO: 4.006', cal:'EO: 1.25~10 / PO: 4~100', sampling:'시료 약 1g, 25mL (용매 Methanol)', note:'SIM mode'},
+  {id:4, name:'Maleic anhydride', cas:'108-31-6', device:'GC-MS', col:'DB-5MS', flow:'1.0 mL/min', split:'5', oven:'초기: 50℃, 2min\n20℃/min → 230℃, 2min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'3.0 min', time:'3 ~ 13 min', acq:'Scan', mz:'45 ~ 400', hs_oven:'', hs_line:'', hs_transfer:'', rt:'5.987 (113 m/z)', cal:'2, 4, 10, 20', sampling:'시료 약 0.3g, 20mL (용매 Methanol)\n진한 황산 1~2방울 → 70℃ Dry oven 30min → 메틸에스테르 유도체화', note:'메틸에스테르 유도체화'},
+  {id:5, name:'Diethylenetriamine (DETA)', cas:'111-40-0', device:'GC-MS', col:'DB-5MS', flow:'1.5 mL/min', split:'2', oven:'초기: 100℃, 1min\n30℃/min → 280℃, 5min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'3.0 min', time:'3 ~ 12 min', acq:'Scan', mz:'45 ~ 400', hs_oven:'', hs_line:'', hs_transfer:'', rt:'5.821', cal:'6, 12, 60', sampling:'시료 0.6675g, 20mL (용매 MeOH)\nACN 용해 → BSTFA 100μL + 피리딘 100μL → 70℃ 30min → 실온 방냉', note:'BSTFA 유도체화'},
+  {id:6, name:'Triethylenetetramine (TETA)\nTetraethylenepentamine (TEPA)', cas:'112-24-3\n112-57-2', device:'HPLC', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A:B=2:8 (0.3% acetic acid : ACN)', wave:'254 nm', ionization:'', mrm:'', rt:'TETA: 11.475 / TEPA: 16.216', cal:'TETA: 10~100 / TEPA: 7.5~150', sampling:'시료 0.6675g, 20mL (용매 MeOH)\nDansyl Chloride 200μL → 40℃ 30min → 실온 방냉', note:'Dansyl Chloride 유도체화'},
+  {id:7, name:'Dimer acid', cas:'61788-89-4', device:'HPLC', col:'C18', flow:'', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'', wave:'254 nm', ionization:'', mrm:'', rt:'', cal:'', sampling:'시료 0.3019g, 20mL (용매 MeOH)\n2% Phenyl isocyanate 1시간 반응', note:'Phenyl isocyanate 유도체화 / 조건 미확립'},
+  {id:8, name:'Heptane', cas:'142-82-5', device:'GC-FID', col:'CP7435', flow:'1.0 mL/min', split:'50', oven:'초기: 50℃, 7.5min\n20℃/min → 100℃, 2min\n30℃/min → 200℃, 1min', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'FID', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', rt:'10.507', cal:'10, 20, 60, 200', sampling:'시료 약 1.0g, 25mL (용매 MeOH)\n5분 초음파 추출', note:''},
+  {id:9, name:'Ethyl Acetate', cas:'141-78-6', device:'HS-GC-MS', col:'DB-5MS', flow:'0.7 mL/min', split:'50', oven:'초기: 40℃, 5min\n5℃/min → 60℃, 1min\n30℃/min → 120℃, 2min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'2.2 min', time:'2.2 ~ 10 min', acq:'Scan', mz:'35 ~ 150', hs_oven:'80', hs_line:'150', hs_transfer:'160', rt:'2.763 (43 m/z)', cal:'1, 5, 10, 20, 50', sampling:'시료 약 0.1mg → HS Bottle → 정제수 1mL → HS 열추출 장비', note:''},
+  {id:10, name:'Formaldehyde', cas:'50-00-0', device:'GC-MS', col:'DB-5MS', flow:'1.0 mL/min', split:'2', oven:'초기: 100℃, 3min\n30℃/min → 250℃, 3min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'3.0 min', time:'3 ~ 11 min', acq:'Scan', mz:'45 ~ 220', hs_oven:'', hs_line:'', hs_transfer:'', rt:'9.139 (210 m/z)', cal:'0.5, 6, 11.1, 22, 37', sampling:'시료 1.0g, 25mL (용매 ACN)\n2,4-DNPH 용액과 1:1, 10분 반응', note:'2,4-DNPH 유도체화'},
+  {id:11, name:'Naphthalene Sulfonic acid (NSA)', cas:'120-18-3', device:'HPLC', col:'C18', flow:'1 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'0.1% 인산:MeOH = 8:2', wave:'254 nm', ionization:'', mrm:'', rt:'4.775', cal:'10, 20, 50, 100', sampling:'샘플 1.0g, 25mL (용매 ACN)', note:''},
+  {id:12, name:'Melamine', cas:'108-78-1', device:'GC-MS', col:'DB-5MS', flow:'0.6 mL/min', split:'5', oven:'초기: 150℃, 3min\n30℃/min → 250℃, 5.67min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'3.0 min', time:'3 ~ 12 min', acq:'Scan', mz:'35 ~ 150', hs_oven:'', hs_line:'', hs_transfer:'', rt:'5.546 (126 m/z)', cal:'1, 5, 10, 25, 50', sampling:'샘플 0.0209g, 100mL (용매 MeOH)', note:''},
+  {id:13, name:'Glycerine', cas:'56-81-5', device:'GC-MS', col:'DB-5MS', flow:'0.8 mL/min', split:'2.5', oven:'초기: 100℃, 3min\n20℃/min → 250℃, 2min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'4.0 min', time:'4 ~ 12.5 min', acq:'Scan', mz:'35 ~ 250', hs_oven:'', hs_line:'', hs_transfer:'', rt:'6.459 (205 m/z)', cal:'1.85, 7.4, 18.5, 37, 74', sampling:'샘플 1.5g, 50mL (용매 ACN)\n4% BSTFA 1:1 + 피리딘 20μL → 70℃ 30min → 실온 방냉', note:'BSTFA 유도체화'},
+  {id:14, name:'m-Xylenediamine', cas:'1477-55-0', device:'GC-MS', col:'DB-5MS', flow:'1.5 mL/min', split:'10', oven:'초기: 80℃, 3min\n30℃/min → 250℃, 2min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'3.0 min', time:'3 ~ 12 min', acq:'Scan', mz:'35 ~ 150', hs_oven:'', hs_line:'', hs_transfer:'', rt:'6.833 (106 m/z)', cal:'1.6, 8, 16, 40, 80', sampling:'샘플 약 0.8g, 10mL (용매 MeOH)', note:''},
+  {id:15, name:'Epichlorohydrin', cas:'106-89-8', device:'HS-GC-MS', col:'DB-5MS', flow:'1.26 mL/min', split:'100', oven:'초기: 50℃, 3.5min\n30℃/min → 200℃, 1.5min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'2.2 min', time:'2.2 ~ 10 min', acq:'Scan', mz:'35 ~ 150', hs_oven:'80', hs_line:'150', hs_transfer:'160', rt:'2.583 (57 m/z)', cal:'10, 20, 30, 40, 100', sampling:'용액 제조(용매: ACN) → HS Bottle → 정제수 1mL → HS 열추출 장비', note:''},
+  {id:16, name:'Tetrahydrofuran (THF)', cas:'109-99-9', device:'GC-MS', col:'DB-5MS', flow:'0.6 mL/min', split:'25', oven:'초기: 40℃, 2min\n25℃/min → 200℃, 2.6min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'2.3 min', time:'2.3 ~ 11 min', acq:'Scan', mz:'35 ~ 150', hs_oven:'', hs_line:'', hs_transfer:'', rt:'2.968 (72 m/z)', cal:'2, 10, 40, 200', sampling:'샘플 약 2.5g, 100mL (용매 MeOH)', note:''},
+  {id:17, name:'Methanol', cas:'67-56-1', device:'HS-GC-MS', col:'DB-5MS', flow:'0.7 mL/min', split:'50', oven:'초기: 40℃, 4min\n20℃/min → 200℃, 1min', ionmode:'EI', ionsrc:'250 ℃', cuttime:'2.2 min', time:'2.2 ~ 10 min', acq:'Scan', mz:'25 ~ 150', hs_oven:'80', hs_line:'150', hs_transfer:'160', rt:'1.866 (31 m/z)', cal:'50, 100, 200, 500', sampling:'시료 0.125g → HS Bottle → 정제수 5mL → HS 열추출 장비', note:''},
+  // HPLC-PDA
+  {id:18, name:'Formaldehyde', cas:'50-00-0', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: DW / B: Acetonitrile\n0.0-8.0 min: A 45% / B 55%', wave:'354 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 3.7', cal:'', sampling:'용매: 4% Acetic acid\n유도체화: 시료 0.7mL + 2,4-DNPH 0.1mL → 상온 30분 반응 → ACN 0.7mL', note:'2,4-DNPH 유도체화'},
+  {id:19, name:'Bisphenol A diglycidyl ether (BADGE)', cas:'1675-54-3', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: DW / B: Acetonitrile\n0.0-8.0 min: A 45% / B 55%', wave:'230 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 4.2', cal:'', sampling:'용매: Methanol', note:''},
+  {id:20, name:'Bisphenol A (BPA)', cas:'80-05-7', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: DW / B: Acetonitrile\n0.0-8.0 min: A 55% / B 45%', wave:'230 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 4.2', cal:'', sampling:'용매: Methanol', note:''},
+  {id:21, name:'Melamine', cas:'108-78-1', device:'HPLC-PDA', col:'C18', flow:'0.7 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: DW / B: MeOH\n0.0-8.0 min: A 60% / B 40%', wave:'240 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 2.1', cal:'', sampling:'용매: Methanol', note:''},
+  {id:22, name:'Sodium dichloroisocyanurate dihydrate (NaDCC)', cas:'51580-86-0', device:'HPLC-PDA', col:'C18', flow:'0.7 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.01 M Ammonium acetate in DW\n0.0-8.0 min: A 100% (Isocratic)', wave:'210 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Isocratic', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 2.5', cal:'', sampling:'용매: 0.01 M Ammonium acetate in DW', note:''},
+  {id:23, name:'3,4-Diaminotoluene', cas:'496-72-0', device:'HPLC-PDA', col:'C18', flow:'0.7 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.01 M Ammonium acetate in DW / B: Acetonitrile\n0.0-8.0 min: A 50% / B 50%', wave:'280 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 2.6', cal:'', sampling:'용매: Acetonitrile', note:''},
+  {id:24, name:'Etaconazole', cas:'60207-93-4', device:'HPLC-PDA', col:'C18', flow:'0.5 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Formic acid in DW / B: Acetonitrile\n0.0-8.0 min: A 30% / B 70%', wave:'221 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 6.0', sampling:'용매: Methanol', note:'유도체화 X'},
+  {id:25, name:'Cinnamaldehyde', cas:'104-55-2', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Formic acid in DW / B: 0.1% Formic acid in MeOH\n0.0-10.0 min: A 50% / B 50%', wave:'290 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 5.3', cal:'', sampling:'용매: Methanol\n유도체화 X', note:''},
+  {id:26, name:'Tebuconazole (단독)', cas:'107534-96-3', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Phosphoric acid in DW / B: Acetonitrile\n0.0-8.0 min: A 40% / B 60%', wave:'220 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 4.3', cal:'', sampling:'용매: Acetone', note:'Tebuconazole 단독 조건'},
+  {id:27, name:'Tebuconazole + Propiconazole (혼합)', cas:'107534-96-3\n60207-90-1', device:'HPLC-PDA', col:'C18', flow:'0.5 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Formic acid in DW / B: Acetonitrile\n0.0-10.0 min: A 35% / B 65%', wave:'220 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'Tebuconazole: 약 4.6\nPropiconazole: 약 5.7', cal:'', sampling:'용매: Methanol', note:'혼합 분석 조건'},
+  {id:28, name:'Propiconazole (단독)', cas:'60207-90-1', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: DW / B: Methanol\n0.0-8.0 min: A 20% / B 80%', wave:'220 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 3.6', cal:'', sampling:'용매: Methanol', note:'Propiconazole 단독 조건'},
+  {id:29, name:'Tetramethyl bisphenol A (TMBPA)', cas:'5613-46-7', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Formic acid in DW / B: Acetonitrile\n0.0-8.0 min: A 35% / B 65%', wave:'230 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 4.0', cal:'', sampling:'용매: Acetonitrile', note:''},
+  {id:30, name:'2,6-Xylenol', cas:'576-26-1', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Formic acid in DW / B: Acetonitrile\n0.0-7.0 min: A 50% / B 50%', wave:'275 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 4.0', cal:'', sampling:'용매: Acetonitrile', note:''},
+  {id:31, name:'AMPamide', cas:'101979-25-3', device:'HPLC-PDA', col:'C18 (5㎛, 4.6×250mm)', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'H2O / MeOH / Formic acid = 30:70:0.1% (Isocratic)', wave:'206 nm', oven_temp:'30', inj_vol:'10', flow_mode:'Isocratic', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 7.26', cal:'', sampling:'용매: Methanol', note:''},
+  {id:32, name:'Defemamide', cas:'1104874-94-3', device:'HPLC-PDA', col:'C8 (5㎛, 4.6×250mm)', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'H2O / MeOH / Formic acid = 40:60:0.1% (Isocratic)', wave:'226 nm', oven_temp:'30', inj_vol:'10', flow_mode:'Isocratic', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 7.76', cal:'', sampling:'용매: Methanol', note:''},
+  {id:33, name:'Gallic acid\nChlorogenic acid\nVanillic acid\nFerulic acid', cas:'149-91-7\n327-97-9\n121-34-6\n537-98-4', device:'HPLC-PDA', col:'C18 (5㎛, 4.6×250mm)', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.2% Acetic acid in DW / B: 0.2% Acetic acid in ACN\n0→30min: A 95→70% / 30→55min: A 70→65% / 55→58min: A 65→95%', wave:'280 nm', oven_temp:'30', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'Gallic: 약 11.1 / Chlorogenic: 약 20.9\nVanillic: 약 23.8 / Ferulic: 약 31.3', cal:'', sampling:'용매: Methanol', note:'4가지 혼합용액'},
+  {id:34, name:'Etofenprox', cas:'80844-07-1', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Formic acid in DW / B: 0.1% Formic acid in ACN\n0→5min: A 30→10% / 5→7min: A 10% / 7→8min: A 30%', wave:'220 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 7.5', cal:'', sampling:'용매: Methanol', note:''},
+  {id:35, name:'Bromadiolone', cas:'28772-56-7', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Formic acid in DW / B: 0.1% Formic acid in ACN\n0→2min: A 90% / 2→10min: A 90→0% / 10→16min: A 0%', wave:'265 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 10.5', cal:'', sampling:'용매: Methanol', note:'2개 피크가 겹친 모양으로 나옴'},
+  {id:36, name:'N1,N1-dimethyl-1,3-propanediamine (DMAPA)', cas:'109-55-7', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Phosphoric acid in DW / B: Acetonitrile\n0→1min: A 85% / 1→2min: A 60% / 2→5.5min: A 60% / 5.5→6.5min: A 85%', wave:'230 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 3.7', cal:'', sampling:'용매: DW\n유도체화: 0.1% DDAC + Sodium carbonate buffer (pH 9.4) 1:1:1 → 70℃ 30분 → DW 10mL mass-up', note:'Didecyldimethylammonium chloride 유도체화'},
+  {id:37, name:'Isophorone diamine (IPDA)', cas:'2855-13-2', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Phosphoric acid in DW / B: Acetonitrile\n0→1min: A 60% / 1→8min: A 60→20% / 8→15min: A 60%', wave:'254 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 10.7', cal:'', sampling:'용매: Acetonitrile\n유도체화: 0.1% DDAC + Sodium carbonate buffer (pH 9.4) 1:1:1 → 70℃ 30분 → ACN 10mL mass-up', note:'Didecyldimethylammonium chloride 유도체화'},
+  {id:38, name:'m-Xylenediamine', cas:'1477-55-0', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Phosphoric acid in DW / B: Acetonitrile\n0→1min: A 60% / 1→8min: A 60→20% / 8→15min: A 60%', wave:'254 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 8.5', cal:'', sampling:'용매: Acetonitrile\n유도체화: 0.1% DDAC + Sodium carbonate buffer (pH 9.4) 1:1:1 → 70℃ 30분 → ACN 10mL mass-up', note:'Didecyldimethylammonium chloride 유도체화'},
+  {id:39, name:'Triethylenetetramine (TETA)', cas:'112-24-3', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Phosphoric acid in DW / B: Acetonitrile\n0→1min: A 60% / 1→8min: A 60→20% / 8→15min: A 60%', wave:'254 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 6.7', cal:'', sampling:'용매: Acetonitrile\n유도체화: 0.1% DDAC + Sodium carbonate buffer (pH 9.4) 1:1:1 → 70℃ 30분 → ACN 10mL mass-up', note:'Didecyldimethylammonium chloride 유도체화'},
+  {id:40, name:'1,3-Benzenediamine', cas:'108-45-2', device:'HPLC-PDA', col:'C18', flow:'0.8 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Phosphoric acid in DW / B: Acetonitrile\n0→5min: A 85% / B 15%', wave:'235 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 1.7', cal:'', sampling:'용매: Methanol', note:''},
+  {id:41, name:'Glutaraldehyde', cas:'111-30-8', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Formic acid in DW / B: 0.1% Formic acid in ACN\n0→1min: A 45% / 1→1.3min: A 25% / 1.3→8min: A 0% / 8→13min: A 45%', wave:'360 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 3.7', cal:'', sampling:'용매: 4% Acetic acid\n유도체화: 시료 0.7mL + 2,4-DNPH 0.1mL → 상온 30분 반응 → ACN 0.7mL', note:'2,4-DNPH 유도체화'},
+  {id:42, name:'Acetaldehyde', cas:'75-07-0', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: DW / B: Acetonitrile\n0-8 min: A 45% / B 55%', wave:'360 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 4.9', cal:'', sampling:'용매: 4% Acetic acid\n유도체화: 시료 0.7mL + 2,4-DNPH 0.1mL → 상온 30분 반응 → ACN 0.7mL', note:'2,4-DNPH 유도체화'},
+  {id:43, name:'Potassium sorbate', cas:'24634-61-5', device:'HPLC-PDA', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 5 mM Ammonium acetate (pH 4.2) in DW / B: Acetonitrile\n0-10 min: A 75% / B 25%', wave:'258 nm', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'', ion_polarity:'', mz_lcms:'', heat_block:'', mrm:'', rt:'약 4.3', cal:'', sampling:'용매: Methanol', note:'필수: 5 mM Ammonium acetate in DW pH 4.2~4.3'},
+  // LC-MS
+  {id:44, name:'Formaldehyde', cas:'50-00-0', device:'LC-MS', col:'C18', flow:'1.0 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: DW / B: Acetonitrile\n0~8 min: A 45% / B 55%', wave:'-', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'ESI, 2.5kV', ion_polarity:'Negative', mz_lcms:'209', heat_block:'250', mrm:'', rt:'약 3.7', cal:'', sampling:'용매: 4% Acetic acid\n유도체화: 시료 0.7mL + 2,4-DNPH 0.1mL → 상온 30분 반응 → ACN 0.7mL', note:'2,4-DNPH 유도체화'},
+  {id:45, name:'Melamine', cas:'108-78-1', device:'LC-MS', col:'C18', flow:'0.5 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: DW / B: Acetonitrile\n0~8 min: A 10% / B 90%', wave:'-', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'ESI, 2.5kV', ion_polarity:'Positive', mz_lcms:'168', heat_block:'250', mrm:'', rt:'약 3.1', cal:'', sampling:'용매: Methanol', note:''},
+  {id:46, name:'Urea', cas:'57-13-6', device:'LC-MS', col:'C18', flow:'0.5 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: DW / B: MeOH\n0~8 min: A 10% / B 90%', wave:'-', oven_temp:'40', inj_vol:'10', flow_mode:'Gradient', ionization:'ESI, 2.5kV', ion_polarity:'Positive', mz_lcms:'121', heat_block:'250', mrm:'', rt:'약 2.9', cal:'', sampling:'용매: Methanol', note:''},
+  {id:47, name:'Didecyldimethylammonium chloride (DDAC)', cas:'-', device:'LC-MS', col:'C18', flow:'0.5 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 10mM NH4 Formate + 0.1% Formic acid in DW\nB: 10mM NH4 Formate + 0.1% Formic acid in MeOH\n0→0.1min: A 30% / 0.1→2.5min: A 5% / 2.5→3.5min: A 5% / 3.5→3.6min: A 30%', wave:'-', oven_temp:'40', inj_vol:'1', flow_mode:'Gradient', ionization:'ESI, 2.5kV', ion_polarity:'Positive', mz_lcms:'326', heat_block:'250', mrm:'', rt:'약 6.2', cal:'', sampling:'용매: Methanol', note:''},
+  {id:48, name:'Saponin', cas:'8047-15-2', device:'LC-MS', col:'C18', flow:'0.3 mL/min', split:'', oven:'', ionmode:'', ionsrc:'', cuttime:'', time:'', acq:'', mz:'', hs_oven:'', hs_line:'', hs_transfer:'', mobile:'A: 0.1% Formic acid in DW / B: 0.1% Formic acid in ACN\n0→3min: A 100% / 3→10min: A 100→70% / 10→21min: A 70→25% / 21→25min: A 22→0% / 25→28min: A 0%', wave:'-', oven_temp:'40', inj_vol:'5', flow_mode:'Gradient', ionization:'ESI, 2.5kV', ion_polarity:'Negative', mz_lcms:'1267', heat_block:'250', mrm:'', rt:'약 18.8', cal:'', sampling:'용매: Methanol', note:''},
+];
+
+let db = [];
+let editingId = null;
+let lastAiText = '';
+let chatMessages = [];
+
+const SHEET_ID = '1pRHuKx2-0oKqnvszK6rVS3zua44gXLRcO9FPH1nfTi4';
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+
+function showLoadingState(msg) {
+  document.getElementById('statsBar').textContent = msg;
+  document.getElementById('mainContent').innerHTML = `
+    <div style="text-align:center;padding:60px;color:#999;font-size:13px;">
+      <div style="font-size:24px;margin-bottom:12px;">⏳</div>
+      ${msg}
+    </div>`;
+}
+
+function csvRowToEntry(row, idx) {
+  const c = row;
+  const isHP = ['HPLC','HPLC-PDA','LC-MS','LC/MS'].includes(c[2]);
+  return {
+    id: idx + 1,
+    name: c[0]||'',
+    cas: c[1]||'',
+    device: c[2]||'',
+    col: c[3]||'',
+    flow: c[4]||'',
+    split: c[5]||'',
+    oven: c[6]||'',
+    ionmode: c[7]||'',
+    ionsrc: c[8]||'',
+    cuttime: c[9]||'',
+    time: c[10]||'',
+    acq: c[11]||'',
+    mz: c[12]||'',
+    hs_oven: c[13]||'',
+    hs_line: c[14]||'',
+    hs_transfer: c[15]||'',
+    mobile: c[16]||'',
+    wave: c[17]||'',
+    oven_temp: c[18]||'',
+    inj_vol: c[19]||'',
+    flow_mode: c[20]||'',
+    ionization: c[21]||'',
+    ion_polarity: c[22]||'',
+    mz_lcms: c[23]||'',
+    heat_block: c[24]||'',
+    mrm: c[25]||'',
+    rt: c[26]||'',
+    cal: c[27]||'',
+    sampling: c[28]||'',
+    note: c[29]||'',
+  };
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let cur = '', inQ = false, row = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') {
+      if (inQ && text[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (ch === ',' && !inQ) {
+      row.push(cur.trim()); cur = '';
+    } else if ((ch === '\n' || ch === '\r') && !inQ) {
+      row.push(cur.trim()); rows.push(row); row = []; cur = '';
+      if (ch === '\r' && text[i+1] === '\n') i++;
+    } else cur += ch;
+  }
+  if (cur || row.length) { row.push(cur.trim()); rows.push(row); }
+  return rows;
+}
+
+async function load() {
+  showLoadingState('Google Sheets에서 데이터 불러오는 중...');
+  try {
+    const res = await fetch(SHEET_URL);
+    if (!res.ok) throw new Error('fetch failed');
+    const text = await res.text();
+    const rows = parseCSV(text);
+    const dataRows = rows.slice(1).filter(r => r[0] && r[0].trim());
+    db = dataRows.map((r, i) => csvRowToEntry(r, i));
+    if (db.length === 0) throw new Error('empty');
+    renderTable();
+  } catch(e) {
+    console.warn('Sheets fetch 실패, 로컬 데이터 사용:', e);
+    db = defaultData;
+    renderTable();
+    document.getElementById('statsBar').textContent += '  ⚠ Sheets 연결 실패 — 로컬 데이터 표시 중';
+  }
+}
+
+function save() {
+  // Sheets가 DB 역할 — 로컬 저장 없음
+  alert('✅ 저장되었습니다.\n\n새 물질을 Google Sheets에도 추가해 주세요!\n(팀원들과 공유되는 DB입니다)');
+}
+function badgeClass(d) {
+  return {'GC-MS':'badge-gcms','HS-GC-MS':'badge-hsgcms','GC-FID':'badge-gcfid','HPLC':'badge-hplc','HPLC-PDA':'badge-hplcpda','LC-MS':'badge-lcms','LC/MS':'badge-lcms'}[d] || 'badge-gcms';
+}
+
+function renderTable() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const dev = document.getElementById('filterDevice').value;
+  const filtered = db.filter(r => {
+    const mq = !q || r.name.toLowerCase().includes(q) || (r.cas||'').toLowerCase().includes(q);
+    const md = !dev || r.device === dev;
+    return mq && md;
+  });
+
+  document.getElementById('statsBar').textContent = `총 ${db.length}개 물질 등록됨 | 검색 결과: ${filtered.length}개`;
+
+  const content = document.getElementById('mainContent');
+
+  if (filtered.length === 0) {
+    const qText = document.getElementById('searchInput').value.trim();
+    content.innerHTML = `
+      <div class="no-result-banner">
+        <div class="nr-title">"${qText}" — DB에 등록된 조건이 없습니다</div>
+        <div class="nr-sub">AI가 기존 DB를 참고해서 분석 조건을 추천해 드릴 수 있어요.</div>
+        <button class="btn btn-ai" style="margin:0 auto;display:inline-flex;" onclick="checkAndOpenAi('${qText.replace(/'/g,"\\'")}')">
+          <span class="ai-spark">✦</span> AI에게 "${qText}" 조건 추천받기
+        </button>
+      </div>`;
+    return;
+  }
+
+  const rows = filtered.map(r => {
+    const names = r.name.split('\n').map(n=>`<div style="font-weight:500">${n.trim()}</div>`).join('');
+    const cass = (r.cas||'').split('\n').map(c=>`<div style="color:#aaa;font-size:11px">${c.trim()}</div>`).join('');
+    const samp = (r.sampling||'').length > 38 ? r.sampling.substring(0,38)+'…' : (r.sampling||'-');
+    return `<tr>
+      <td>${names}${cass}</td>
+      <td><span class="badge ${badgeClass(r.device)}">${r.device}</span></td>
+      <td>${r.col||'-'}</td>
+      <td><div class="multi-line">${r.oven||'-'}</div></td>
+      <td>${r.acq||'-'}</td>
+      <td style="font-size:11px;color:#555">${(r.rt||'-').substring(0,28)}</td>
+      <td class="muted">${samp}</td>
+      <td style="white-space:nowrap;display:flex;gap:4px;padding-top:10px">
+        <button class="btn-sm btn-sm-gray" onclick="openDetail(${r.id})">상세</button>
+        <button class="btn-sm btn-sm-gray" onclick="openEdit(${r.id})">수정</button>
+        <button class="btn-sm btn-sm-red" onclick="deleteEntry(${r.id})">삭제</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>물질명</th><th>분석 장비</th><th>컬럼</th>
+          <th>오븐 온도 프로그램</th><th>ACQ Mode</th>
+          <th>R.Time</th><th>샘플링 요약</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+/* ---- API Key ---- */
+const API_KEY_STORAGE = 'gc_db_apikey';
+function getApiKey() { return localStorage.getItem(API_KEY_STORAGE)||''; }
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key.startsWith('sk-')) { alert('올바른 API 키 형식이 아닙니다. (sk- 로 시작해야 합니다)'); return; }
+  localStorage.setItem(API_KEY_STORAGE, key);
+  closeModal('apiKeyModal');
+  openAiModal(_pendingQuery||'');
+}
+let _pendingQuery = '';
+function checkAndOpenAi(preQuery) {
+  _pendingQuery = preQuery||'';
+  if (!getApiKey()) {
+    document.getElementById('apiKeyInput').value = getApiKey();
+    document.getElementById('apiKeyModal').classList.add('open');
+  } else {
+    openAiModal(preQuery);
+  }
+}
+
+/* ---- AI Modal ---- */
+function openAiModal(preQuery) {
+  chatMessages = [];
+  document.getElementById('chatHistory').innerHTML = '';
+  document.getElementById('aiResultArea').className = 'ai-result empty';
+  document.getElementById('aiResultArea').textContent = '물질명을 입력하고 추천받기를 눌러주세요.';
+  document.getElementById('aiActions').style.display = 'none';
+  document.getElementById('aiQuery').value = preQuery || '';
+  lastAiText = '';
+  document.getElementById('aiModal').classList.add('open');
+  if (preQuery) setTimeout(() => askAI(), 100);
+}
+
+function buildDbSummary() {
+  return db.slice(0,17).map(r =>
+    `- ${r.name.split('\n')[0]} (${r.cas.split('\n')[0]}): ${r.device}, ${r.col||''}, ${r.oven ? '오븐:'+r.oven.split('\n')[0] : ''}, ${r.acq||''}, RT:${r.rt||''}`
+  ).join('\n');
+}
+
+async function askAI() {
+  const q = document.getElementById('aiQuery').value.trim();
+  if (!q) return;
+
+  const btn = document.getElementById('askBtn');
+  btn.disabled = true;
+  btn.textContent = '분석 중...';
+
+  // Add user bubble
+  const hist = document.getElementById('chatHistory');
+  hist.innerHTML += `<div class="chat-bubble chat-user">${q}</div>`;
+  document.getElementById('aiQuery').value = '';
+
+  // Add typing indicator
+  const typingId = 'typing_' + Date.now();
+  hist.innerHTML += `<div id="${typingId}" class="chat-bubble chat-ai"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  hist.scrollTop = hist.scrollHeight;
+
+  document.getElementById('aiResultArea').style.display = 'none';
+  document.getElementById('aiActions').style.display = 'none';
+
+  // Build system prompt
+  const systemPrompt = `당신은 분석화학 전문가입니다. 사용자가 새로운 화학물질의 잔류단량체 또는 정량분석 조건을 물어보면, 아래 팀의 기존 분석 DB를 참고하여 최적의 분석 장비와 조건을 한국어로 추천해주세요.
+
+[팀 기존 분석 DB 요약]
+${buildDbSummary()}
+
+답변 형식:
+1. 추천 분석 장비 및 이유 (물성 근거 포함)
+2. 유사 기존 물질과 비교
+3. 권장 분석 조건 (컬럼, 오븐 프로그램, Split ratio, ACQ mode, m/z 또는 이동상 등)
+4. 전처리 / Sampling 방법
+5. 주의사항
+
+간결하고 실용적으로 답변해주세요.`;
+
+  // Add to conversation history
+  chatMessages.push({ role: 'user', content: q });
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: chatMessages
+      })
+    });
+    const data = await response.json();
+    const aiText = (data.content||[]).map(c=>c.text||'').join('');
+
+    chatMessages.push({ role: 'assistant', content: aiText });
+    lastAiText = aiText;
+
+    // Replace typing with answer
+    document.getElementById(typingId).outerHTML =
+      `<div class="chat-bubble chat-ai">${aiText.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>`;
+
+    document.getElementById('aiResultArea').style.display = 'none';
+    document.getElementById('aiActions').style.display = 'flex';
+    hist.scrollTop = hist.scrollHeight;
+
+  } catch(e) {
+    document.getElementById(typingId).outerHTML =
+      `<div class="chat-bubble chat-ai" style="color:#c62828">오류가 발생했습니다. 잠시 후 다시 시도해주세요.</div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '추천받기';
+}
+
+// Allow Enter key (Shift+Enter for newline)
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('aiQuery').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askAI(); }
+  });
+});
+
+function openAddFromAI() {
+  closeModal('aiModal');
+  clearForm();
+  document.getElementById('f_note').value = '[AI 추천] ' + (document.getElementById('aiQuery').value || '').substring(0,80);
+  toggleDeviceFields('GC-MS');
+  document.getElementById('modalTitle').textContent = '새 물질 추가 (AI 추천 참고)';
+  document.getElementById('addModal').classList.add('open');
+}
+
+/* ---- Add/Edit ---- */
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = '새 물질 추가';
+  clearForm();
+  toggleDeviceFields('GC-MS');
+  document.getElementById('addModal').classList.add('open');
+}
+
+function openEdit(id) {
+  const r = db.find(x=>x.id===id); if(!r) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = '분석 조건 수정';
+  const fields = ['name','cas','col','flow','split','oven','ionmode','ionsrc','cuttime','time','mz','hs_oven','hs_line','hs_transfer','mobile','wave','oven_temp','inj_vol','flow_mode','ionization','ion_polarity','mz_lcms','heat_block','mrm','rt','cal','sampling','note'];
+  fields.forEach(f => { const el=document.getElementById('f_'+f); if(el) el.value=r[f]||''; });
+  document.getElementById('f_device').value = r.device;
+  document.getElementById('f_acq').value = r.acq||'Scan';
+  toggleDeviceFields(r.device);
+  document.getElementById('addModal').classList.add('open');
+}
+
+function toggleDeviceFields(d) {
+  const isHP = d==='HPLC'||d==='LC/MS'||d==='HPLC-PDA'||d==='LC-MS';
+  const isHS = d==='HS-GC-MS';
+  document.getElementById('gc_fields').style.display = isHP?'none':'';
+  document.getElementById('hplc_fields').style.display = isHP?'':'none';
+  document.getElementById('hs_fields').style.display = isHS?'':'none';
+}
+document.getElementById('f_device').addEventListener('change',function(){toggleDeviceFields(this.value);});
+
+function clearForm() {
+  ['f_name','f_cas','f_col','f_flow','f_split','f_oven','f_ionmode','f_ionsrc','f_cuttime','f_time','f_mz','f_hs_oven','f_hs_line','f_hs_transfer','f_mobile','f_wave','f_oven_temp','f_inj_vol','f_flow_mode','f_ionization','f_ion_polarity','f_mz_lcms','f_heat_block','f_mrm','f_rt','f_cal','f_sampling','f_note']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('f_device').value='GC-MS';
+  document.getElementById('f_acq').value='Scan';
+}
+
+function saveEntry() {
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) { alert('물질명을 입력해주세요.'); return; }
+  const entry = {
+    id: editingId||Date.now(), name,
+    cas: document.getElementById('f_cas').value.trim(),
+    device: document.getElementById('f_device').value,
+    col: document.getElementById('f_col').value.trim(),
+    flow: document.getElementById('f_flow').value.trim(),
+    split: document.getElementById('f_split').value.trim(),
+    oven: document.getElementById('f_oven').value.trim(),
+    ionmode: document.getElementById('f_ionmode').value.trim(),
+    ionsrc: document.getElementById('f_ionsrc').value.trim(),
+    cuttime: document.getElementById('f_cuttime').value.trim(),
+    time: document.getElementById('f_time').value.trim(),
+    acq: document.getElementById('f_acq').value,
+    mz: document.getElementById('f_mz').value.trim(),
+    hs_oven: document.getElementById('f_hs_oven').value.trim(),
+    hs_line: document.getElementById('f_hs_line').value.trim(),
+    hs_transfer: document.getElementById('f_hs_transfer').value.trim(),
+    mobile: document.getElementById('f_mobile').value.trim(),
+    wave: document.getElementById('f_wave').value.trim(),
+    oven_temp: document.getElementById('f_oven_temp').value.trim(),
+    inj_vol: document.getElementById('f_inj_vol').value.trim(),
+    flow_mode: document.getElementById('f_flow_mode').value.trim(),
+    ionization: document.getElementById('f_ionization').value.trim(),
+    ion_polarity: document.getElementById('f_ion_polarity').value.trim(),
+    mz_lcms: document.getElementById('f_mz_lcms').value.trim(),
+    heat_block: document.getElementById('f_heat_block').value.trim(),
+    mrm: document.getElementById('f_mrm').value.trim(),
+    rt: document.getElementById('f_rt').value.trim(),
+    cal: document.getElementById('f_cal').value.trim(),
+    sampling: document.getElementById('f_sampling').value.trim(),
+    note: document.getElementById('f_note').value.trim(),
+  };
+  if (editingId) { const i=db.findIndex(x=>x.id===editingId); if(i!==-1) db[i]=entry; }
+  else db.push(entry);
+  save(); closeModal('addModal'); renderTable();
+}
+
+function deleteEntry(id) {
+  const r=db.find(x=>x.id===id); if(!r) return;
+  if(!confirm(`"${r.name.split('\n')[0]}" 항목을 삭제하시겠습니까?`)) return;
+  db=db.filter(x=>x.id!==id); save(); renderTable();
+}
+
+function openDetail(id) {
+  const r=db.find(x=>x.id===id); if(!r) return;
+  document.getElementById('detailTitle').textContent = r.name.split('\n')[0];
+  const isHP=r.device==='HPLC'||r.device==='LC/MS'||r.device==='HPLC-PDA'||r.device==='LC-MS', isHS=r.device==='HS-GC-MS';
+  let h=`<div class="detail-section"><h3>기본 정보</h3><div class="detail-grid">
+    <span class="detail-label">물질명</span><span class="detail-val">${r.name}</span>
+    <span class="detail-label">CAS No.</span><span class="detail-val">${r.cas||'-'}</span>
+    <span class="detail-label">분석 장비</span><span class="detail-val"><span class="badge ${badgeClass(r.device)}">${r.device}</span></span>
+  </div></div>
+  <div class="detail-section"><h3>컬럼 / 유량</h3><div class="detail-grid">
+    <span class="detail-label">Column</span><span class="detail-val">${r.col||'-'}</span>
+    <span class="detail-label">Column Flow</span><span class="detail-val">${r.flow||'-'}</span>
+    <span class="detail-label">Split Ratio</span><span class="detail-val">${r.split||'-'}</span>
+  </div></div>`;
+  if(isHS) h+=`<div class="detail-section"><h3>Headspace 조건</h3><div class="detail-grid">
+    <span class="detail-label">HS Oven Temp.</span><span class="detail-val">${r.hs_oven||'-'} ℃</span>
+    <span class="detail-label">Sample Line Temp.</span><span class="detail-val">${r.hs_line||'-'} ℃</span>
+    <span class="detail-label">Transfer Line Temp.</span><span class="detail-val">${r.hs_transfer||'-'} ℃</span>
+  </div></div>`;
+  if(!isHP) h+=`<div class="detail-section"><h3>오븐 온도 프로그램</h3>
+    <div class="detail-val" style="font-size:13px">${(r.oven||'-').replace(/\n/g,'<br>')}</div></div>
+  <div class="detail-section"><h3>MS 조건</h3><div class="detail-grid">
+    <span class="detail-label">Ion Mode</span><span class="detail-val">${r.ionmode||'-'}</span>
+    <span class="detail-label">Ion Source Temp.</span><span class="detail-val">${r.ionsrc||'-'}</span>
+    <span class="detail-label">Solvent Cut Time</span><span class="detail-val">${r.cuttime||'-'}</span>
+    <span class="detail-label">Start ~ End Time</span><span class="detail-val">${r.time||'-'}</span>
+    <span class="detail-label">ACQ Mode</span><span class="detail-val">${r.acq||'-'}</span>
+    <span class="detail-label">m/z</span><span class="detail-val">${r.mz||'-'}</span>
+  </div></div>`;
+  else h+=`<div class="detail-section"><h3>HPLC / LC-MS 조건</h3><div class="detail-grid">
+    <span class="detail-label">이동상 / Gradient</span><span class="detail-val">${(r.mobile||'-').replace(/\n/g,'<br>')}</span>
+    <span class="detail-label">측정 파장</span><span class="detail-val">${r.wave||'-'}</span>
+    <span class="detail-label">Oven Temp.</span><span class="detail-val">${r.oven_temp ? r.oven_temp+'℃' : '-'}</span>
+    <span class="detail-label">Injection Vol.</span><span class="detail-val">${r.inj_vol ? r.inj_vol+'μL' : '-'}</span>
+    <span class="detail-label">Flow Mode</span><span class="detail-val">${r.flow_mode||'-'}</span>
+    <span class="detail-label">이온화 방식</span><span class="detail-val">${r.ionization||'-'}</span>
+    <span class="detail-label">Ionization Polarity</span><span class="detail-val">${r.ion_polarity||'-'}</span>
+    <span class="detail-label">m/z</span><span class="detail-val">${r.mz_lcms||'-'}</span>
+    <span class="detail-label">Heat Block Temp.</span><span class="detail-val">${r.heat_block ? r.heat_block+'℃' : '-'}</span>
+    <span class="detail-label">MRM 이온</span><span class="detail-val">${r.mrm||'-'}</span>
+  </div></div>`;
+  h+=`<div class="detail-section"><h3>결과 / 샘플링</h3><div class="detail-grid">
+    <span class="detail-label">R.Time (min)</span><span class="detail-val">${r.rt||'-'}</span>
+    <span class="detail-label">Calibration</span><span class="detail-val">${(r.cal||'-').replace(/\n/g,'<br>')}</span>
+  </div></div>
+  <div class="detail-section"><h3>Sampling 방법</h3>
+    <div class="detail-val" style="font-size:13px;line-height:1.8">${(r.sampling||'-').replace(/\n/g,'<br>')}</div></div>`;
+  if(r.note) h+=`<div class="detail-section"><h3>비고</h3><div class="detail-val" style="color:#7c4dff">${r.note}</div></div>`;
+  document.getElementById('detailBody').innerHTML=h;
+  document.getElementById('detailModal').classList.add('open');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(bg=>{
+  bg.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+});
+
+load(); renderTable();
+</script>
+</body>
+</html>
